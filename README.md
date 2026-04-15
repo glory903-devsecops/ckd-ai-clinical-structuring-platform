@@ -1,5 +1,7 @@
 # CKD AI Clinical Information Structuring Platform (PoC)
 
+### 🔗 [Live Demo 바로가기](https://glory903-devsecops.github.io/ckd-ai-clinical-structuring-platform/)
+
 본 저장소는 의료진의 정보 정리 관점(Mental Model)에 맞춰 임상 정보를 구조화하는 AI 기반 워크스페이스의 PoC(Proof of Concept) 프로젝트입니다.
 
 ## 1. 프로젝트 개요
@@ -40,7 +42,7 @@
 ckd-ai-clinical-structuring-platform/
 ├── app/                # Python 백엔드/체인 로직 (Skeleton)
 │   ├── chains/         # LangChain 기반 구조화 체인
-│   ├── retrieval/      # 벡터 스토어 및 리트리버 로직
+│   ├── retrieval/      # 벡터 스토어 및 리트리버 로 로직
 │   ├── services/       # 비즈니스 워크플로우 서비스
 │   ├── ui/             # Streamlit 레이아웃 (Reference)
 │   └── prompts/        # 시스템/유저 프롬프트 템플릿
