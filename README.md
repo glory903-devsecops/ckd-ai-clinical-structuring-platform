@@ -1,61 +1,69 @@
 # CKD AI Clinical Information Structuring Platform (PoC)
 
-### 🔗 [Live Demo 바로가기](https://glory903-devsecops.github.io/ckd-ai-clinical-structuring-platform/)
+<p align="center">
+  <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=Vite&logoColor=white" />
+  <img src="https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=React&logoColor=black" />
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=Python&logoColor=white" />
+  <img src="https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge&logo=LangChain&logoColor=white" />
+  <img src="https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=GitHub-Actions&logoColor=white" />
+</p>
 
-본 저장소는 의료진의 정보 정리 관점(Mental Model)에 맞춰 임상 정보를 구조화하는 AI 기반 워크스페이스의 PoC(Proof of Concept) 프로젝트입니다.
+### 🌐 [Live Demo 바로가기](https://glory903-devsecops.github.io/ckd-ai-clinical-structuring-platform/)
 
-## 1. 프로젝트 개요
-제약 디지털 마케팅 및 HCP(Healthcare Professional) 플랫폼 기획 단계에서 제안되는 시스템으로, 의료진이 방대한 임상 데이터 속에서 **자신이 선호하는 구조**로 정보를 즉각 재구성하여 탐색할 수 있는 경험을 제공합니다.
+본 프로젝트는 의료진의 개별적인 정보 정리 관점(**Mental Model**)에 따라 방대한 임상 데이터를 실시간으로 재구성하여 제공하는 **AI 기반 임상 정보 구조화 워크스페이스**의 PoC(Proof of Concept)입니다.
 
-- **핵심 가치**: "찾기"에서 "정리된 결과 보기"로의 패러다임 전환
-- **주요 대상**: 신장내과 전문의, 전공의, MSL(Medical Science Liaison) 등
+---
 
-## 2. 문제 정의 (Pain Point)
-- **정보 과잉**: 최신 가이드라인, 학술지, 약물 정보가 여러 곳에 산재되어 있음
-- **정리 기준의 파편화**: 동일 질환이라도 의료진의 관심사에 따라 정보를 정리하는 방식(치료 단계 vs 약물 기전 vs 부작용 등)이 다름
-- **비효율적 탐색**: 플랫폼이 제공하는 고정된 UI 구조로 인해 의료진은 정보를 다시 머릿속에서 재구성해야 하는 인지적 부담을 가짐
+## 💎 Project Vision: "From Searching to Structuring"
+제약 디지털 마케팅 및 HCP(Healthcare Professional) 플랫폼 환경에서 의료진은 매일 쏟아지는 최신 가이드라인과 학술 데이터를 소화해야 합니다. 본 시스템은 단순히 정보를 나열하는 검색 엔진의 단계를 넘어, **사용자가 정의한 '관점'으로 정보를 즉각 재배치**함으로써 의료진의 인지적 부담을 획기적으로 낮추는 것을 목표로 합니다.
 
-## 3. 솔루션 개념 (Solution Concept)
-본 플랫폼은 **Decision Support(진단/처방)** 시스템이 아닌 **Information Structuring(정보 구조화)** 도구입니다. 사용자가 선택한 '관점'에 따라 RAG(Retrieval-Augmented Generation) 기술이 문맥을 재배치합니다.
+## 🎨 Design Philosophy: "Clinical, Reliable, Minimal"
+본 플랫폼의 인터페이스는 신뢰도 높은 전문가용 도구로서의 가치를 극대화하기 위해 다음과 같은 디자인 원칙을 준수합니다.
+- **Glassmorphism**: 정교한 배경 블러(Blur)와 반투명 효과를 통해 레이어 간의 깊이감을 형성하고 현대적인 SaaS 느낌을 구현했습니다.
+- **Midnight & Emerald Theme**: 신뢰를 상징하는 Deep Slate와 활력을 의미하는 Emerald 컬러를 조화시켜 임상 현장에 어울리는 미학적 균형을 맞췄습니다.
+- **Micro-Interactions**: 질환 분석 시의 스캐닝 애니메이션 및 탭 전환 효과를 통해 AI가 정보를 처리하는 과정의 투명성과 사용자 경험을 개선했습니다.
 
-### 주요 정리 관점 예시:
-- **치료 단계 중심**: 병기(Stage 1~5)에 따른 표준 관리 경로
-- **약물 기전 중심**: MOA(작용 기전) 및 계열별 약리적 특성
-- **부작용 고려 중심**: 안전성 프로파일 및 환자별 금기 사항
-- **복용 편의성 중심**: 투여 경로, 빈도 및 환자 순응도 최적화
+## 🛠 Core Features
+- **Dynamic Perspective Structuring**: '치료 단계', '약물 기전', '부작용' 등 의료진의 관심사에 따른 결과물 동적 생성.
+- **Evidence-Based RAG Card**: 구조화된 각 항목의 근거가 되는 원본 문서 조각(Chunk)을 즉시 매칭하여 제시.
+- **Prompt Engineering Visibility**: AI가 정보를 처리하는 논리(System Prompt)를 투명하게 공개하여 시스템의 신뢰성 보완.
+- **Premium Dashboard UI**: 고도화된 타이포그래피와 레이아웃을 반영한 전문가용 워크스페이스 제공.
 
-## 4. 데모 사이트 실행 방법
-
-### 프론트엔드 (React Dashboard)
-1. `cd frontend`
-2. `npm install`
-3. `npm run dev`
-4. 브라우저에서 `localhost:5173` 접속
-
-### 백엔드 아키텍처 (Python Skeleton - 선택 사항)
-향후 LLM 연동 및 파이프라인 확장을 위한 모듈형 구조가 `app/` 폴더에 구현되어 있습니다.
-1. `pip install -r requirements.txt`
-2. `streamlit run app/main.py`
-
-## 5. 폴더 구조
+## 📂 Project Structure
 ```text
 ckd-ai-clinical-structuring-platform/
-├── app/                # Python 백엔드/체인 로직 (Skeleton)
-│   ├── chains/         # LangChain 기반 구조화 체인
-│   ├── retrieval/      # 벡터 스토어 및 리트리버 로 로직
-│   ├── services/       # 비즈니스 워크플로우 서비스
-│   ├── ui/             # Streamlit 레이아웃 (Reference)
-│   └── prompts/        # 시스템/유저 프롬프트 템플릿
 ├── frontend/           # 프리미엄 데모 사이트 (Vite + React)
-├── data/               # 시연용 샘플 임상 데이터
-├── docs/               # 설계 및 명세 문서 (Korean)
-└── .github/workflows/  # 자동 배포 설정
+│   ├── src/App.jsx     # UI 로직 및 데이터 인터렉션
+│   └── src/index.css   # Glassmorphism 기반 프리미엄 스타일링
+├── app/                # Python 백엔드 아키텍처 (LangChain Skeleton)
+│   ├── chains/         # 정보 구조화 체인 로직
+│   └── retrieval/      # 벡터 데이터 추출 엔진
+├── docs/               # 한국어 상세 설계 및 기획 문서
+└── .github/workflows/  # 자동 배포 (GitHub Pages) 파이프라인
 ```
 
-## 6. 배포 가이드
-본 프로젝트의 데모 사이트는 GitHub Actions를 통해 GitHub Pages로 자동 배포되도록 설정되어 있습니다.
+---
 
-## 7. 법적 고지 및 범위
-- 본 시스템은 의료진의 의사결정을 지원하거나 진단/처방을 권고하지 않습니다.
-- 제공되는 정보는 검증된 가이드라인과 논문에 기반한 구조화 시뮬레이션입니다.
-- PoC 단계에서는 정해진 샘플 데이터(만성 콩팥병 중심)를 통해 UX 가능성을 검증합니다.
+## 🏠 시작하기
+
+### 프론트엔드 빌드 및 로컬 실행
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### 백엔드 구조 확인 (Reference Only)
+```bash
+pip install -r requirements.txt
+streamlit run app/main.py
+```
+
+---
+
+## ⚖️ Legal Disclaimer
+- 본 플랫폼은 의료진의 의사결정을 지원하기 위한 시뮬레이션 도구이며, 진단이나 처방을 목적으로 하지 않습니다.
+- 모든 결과물은 PoC를 위해 구축된 샘플 임상 데이터(CKD 중심)를 바탕으로 생성됩니다.
+
+---
+© 2024 CKD AI Clinical Structuring Platform Project.
