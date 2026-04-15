@@ -46,14 +46,23 @@ ckd-ai-clinical-structuring-platform/
 
 ## 🏠 시작하기
 
-### 프론트엔드 빌드 및 로컬 실행
+### Docker를 이용한 즉각 실행 (추천)
+프로젝트 루트 폴더에서 아래 명령어를 입력하면 프론트엔드와 백엔드가 각각 컨테이너로 빌드 및 실행됩니다.
+```bash
+docker-compose up --build
+```
+- **프론트엔드**: [http://localhost:80](http://localhost:80)
+- **백엔드(참조용)**: [http://localhost:8501](http://localhost:8501)
+
+### 로컬 개발 환경 실행
+#### 프론트엔드 (React Dashboard)
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-### 백엔드 구조 확인 (Reference Only)
+#### 백엔드 아키텍처 (Python Skeleton)
 ```bash
 pip install -r requirements.txt
 streamlit run app/main.py
