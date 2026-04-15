@@ -75,6 +75,14 @@ streamlit run app/main.py
 
 ---
 
+## 🚀 Roadmap & Vision: "Towards Universal Clinical Interoperability"
+본 프로젝트는 단순한 데모를 넘어, 의료 데이터 파편화 문제를 해결하기 위한 첫 단추로서 다음과 같은 확장 가능성을 제시합니다.
+- **Universal Metadata Generator**: 전문가의 관점을 구조화된 JSON/Schema 형태로 추출하여, 서로 다른 병원 정보 시스템(HIS) 간의 상호운용성을 확보하는 매개체로 확장.
+- **Collaborative Mental Models**: 병원이나 분과별로 최적화된 '정리 프레임워크'를 공유하고 통합하여, 의료진 간의 협업 리드타임을 최소화.
+- **Enterprise RAG Pipeline**: 본 PoC에서 검증된 전처리 로직을 실제 대규모 언어 모델(LLM) 및 벡터 DB와 결합하여 기업용 지식 관리 시스템(KMS)으로 고도화.
+
+---
+
 ## ⚖️ Legal Disclaimer
 - 본 플랫폼은 의료진의 의사결정을 지원하기 위한 시뮬레이션 도구이며, 진단이나 처방을 목적으로 하지 않습니다.
 - 모든 결과물은 PoC를 위해 구축된 샘플 임상 데이터(CKD 중심)를 바탕으로 생성됩니다.
