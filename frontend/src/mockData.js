@@ -1,65 +1,54 @@
-export const mockResults = {
-  "만성 콩팥병": {
-    "치료 단계 중심": {
-      overview: "만성 콩팥병(CKD)은 사구체 여과율의 저하와 신장 손상의 증거가 3개월 이상 지속되는 상태입니다. 치료의 핵심 목적은 말기 신부전(ESRD)으로의 진행을 늦추고 심혈관계 합병증을 관리하는 것입니다.",
-      preference_desc: "신장 기능(eGFR) 단계별 표준 관리 지침(KDIGO 2024 기반)을 중심으로 정보를 재구성하였습니다.",
-      sections: [
-        {
-          title: "초기 단계 (Stage 1-2): 신장 손상 억제",
-          items: [
-            "원인 질환(고혈압, 당뇨)의 엄격한 조절",
-            "RAAS 억제제(ACEI/ARB) 처방 고려",
-            "생활 습관 개선: 저염식, 금연, 체중 관리"
-          ]
-        },
-        {
-          title: "중기 단계 (Stage 3a-3b): 합병증 모니터링",
-          items: [
-            "SGLT2 억제제 병용 투여 권고 강화",
-            "빈혈 및 골미네랄 대사 이상 스크리닝",
-            "심혈관계 위험 인자 집중 관리"
-          ]
-        },
-        {
-          title: "말기 단계 (Stage 4-5): 투석 준비 및 관리",
-          items: [
-            "투석 경로 확보 및 신대체 요법 교육",
-            "고칼륨혈증 및 대사성 산증 교정",
-            "투여 약물의 용량 조정 및 신독성 약물 금기"
-          ]
-        }
-      ],
-      keywords: ["KDIGO 가이드라인", "eGFR 분류", "RAASi", "SGLT2i"],
-      prompt: `[System] 시니어 임상 분석가로서 입력된 문서를 '치료 단계' 중심으로 구조화하라.
-[Context] KDIGO 2024 가이드라인 및 SGLT2i 임상 데이터...
-[User] 질환: 만성 콩팥병, 관점: 치료 단계 중심`
-    },
-    "약물 기전 중심": {
-      overview: "CKD 치료제는 신장 내 압력 저하, 섬유화 억제, 대사 개선 등 다양한 기전을 통해 작용합니다. 최근 'Four Pillars' 요법이 표준으로 자리잡고 있습니다.",
-      preference_desc: "약물의 생화학적 작용 원리와 계열별 차별점을 기반으로 정보를 구조화하였습니다.",
-      sections: [
-        {
-          title: "Blood Pressure & RAAS 블로커",
-          items: [
-            "ACE 억제제 및 ARB: 사구체 내압 감소 및 단백뇨 개선",
-            "MRA (Finerenone): 비스테로이드성 무기질코르티코이드 수용체 길항을 통한 염증 및 섬유화 억제"
-          ]
-        },
-        {
-          title: "Metabolic & SGLT2 억제제",
-          items: [
-            "포도당 및 나트륨 재흡수 억제: Tubuloglomerular feedback 회복",
-            "심혈관계 및 신장 보호 효과의 독립적 기전 입증"
-          ]
-        }
-      ],
-      keywords: ["MOA", "Pillars Therapy", "Finerenone", "Hemodynamics"],
-      prompt: `[System] 시니어 임상 분석가로서 입력된 문서를 '약물 기전' 중심으로 구조화하라.
-[Context] 약리학 교과서 및 최신 3상 임상 논문...
-[User] 질환: 만성 콩팥병, 관점: 약물 기전 중심`
-    }
+// Clinical Diagnosis Discovery Platform (CDDP) - High-Fidelity Demo Data
+
+export const initialDiagnoses = [
+  {
+    id: 101,
+    date: "2024-04-16 10:15",
+    rawContent: "72세 여성 환자, 사구체신염 기왕력. 최근 사지 부종 및 단백뇨(3+) 관찰됨. 혈청 크레아티닌 수치 2.1mg/dL로 상승하여 CKD Stage 4 진입 의심. 저염식 및 이뇨제 조절이 필요한 상태.",
+    summary: "사구체신염 악화 및 CKD 4단계 진입",
+    keywords: ["사구체신염", "CKD 4", "단백뇨", "부종", "고령"],
+    perspective: "치료 단계 중심"
+  },
+  {
+    id: 102,
+    date: "2024-04-15 14:30",
+    rawContent: "45세 남성, 제2형 당뇨병 15년차. 미세단백뇨 관찰되어 SGLT2 억제제(Dapagliflozin) 처방 검토 중. 심부전 합병증 예방을 위한 조기 중재 필요.",
+    summary: "당뇨병성 신증 초기 SGLT2i 도입",
+    keywords: ["당뇨병", "미세단백뇨", "SGLT2i", "Dapagliflozin", "합병증 예방"],
+    perspective: "합병증 관리 중심"
+  },
+  {
+    id: 103,
+    date: "2024-04-14 09:10",
+    rawContent: "만성 신부전 환자, 최근 혈청 칼륨 수치 5.8mEq/L로 상승. ACE 억제제 일시 중단 및 칼륨 결합제 투여 시작. 고칼륨혈증 식단 가이드 제공 완료.",
+    summary: "고칼륨혈증 응급 관리",
+    keywords: ["고칼륨혈증", "ACE 억제제", "칼륨 결합제", "식단 조절"],
+    perspective: "안전성 중심"
+  },
+  {
+    id: 104,
+    date: "2024-04-13 16:45",
+    rawContent: "투석 대기 중인 55세 여성 환자. 조혈제(EPO) 투여에도 불구하고 헤모글로빈 수치 8.5g/dL로 저하됨. 철분 보충 요법 병행 검토.",
+    summary: "신부전성 빈혈 고도화 치료",
+    keywords: ["빈혈", "EPO", "철분 요법", "헤모글로빈"],
+    perspective: "합병증 관리 중심"
+  },
+  {
+    id: 105,
+    date: "2024-04-12 11:30",
+    rawContent: "복용 순응도가 낮은 고혈압 및 초기 CKD 환자. 1일 1회 복합제(ARB+CCB)로 전환하여 혈압 조절 최적화 시도.",
+    summary: "복약 순응도 개선 처방",
+    keywords: ["고혈압", "복용 순응도", "복합제", "혈압 조절"],
+    perspective: "복용 편의성 중심"
   }
-};
+];
+
+export const keywordDictionary = [
+  "사구체신염", "CKD 4", "단백뇨", "부종", "고령", "당뇨병", "미세단백뇨", 
+  "SGLT2i", "Dapagliflozin", "합병증 예방", "고칼륨혈증", "ACE 억제제", 
+  "칼륨 결합제", "식단 조절", "빈혈", "EPO", "철분 요법", "헤모글로빈", 
+  "고혈압", "복용 순응도", "복합제", "혈압 조절"
+];
 
 export const mockSources = [
   {
@@ -68,13 +57,8 @@ export const mockSources = [
     snippet: "This guideline provides evidence-based recommendations for all aspects of CKD management, emphasizing early detection and the use of SGLT2 inhibitors."
   },
   {
-    title: "EMPA-KIDNEY Trial Results",
-    topic: "SGLT2i Clinical Data",
-    snippet: "The trial demonstrated that empagliflozin reduced the risk of kidney disease progression or death from cardiovascular causes in a wide range of patients."
-  },
-  {
-    title: "FIDEIO-DKD Study Overview",
-    topic: "MRA Action in CKD",
-    snippet: "Finerenone significantly reduced the risk of kidney failure and cardiovascular events in patients with CKD and type 2 diabetes."
+    title: "SGLT2i in Kidney Protection: Clinical Evidence",
+    topic: "Therapeutic Strategy",
+    snippet: "Recent trials demonstrate significant renal risk reduction with SGLT2i across various patient profiles."
   }
 ];

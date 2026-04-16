@@ -1,18 +1,20 @@
 services:
   frontend:
-    build: 
+    build:
       context: ./frontend
-      dockerfile: Dockerfile
     ports:
       - "80:80"
-    restart: always
+    depends_on:
+      - backend
 
   backend:
     build:
       context: .
-      dockerfile: Dockerfile
     ports:
       - "8501:8501"
-    env_file:
-      - .env.example # PoC용 기초 설정 로드
-    restart: always
+      - "8000:8000"
+    # Added volume mapping for the data directory to ensure clinical archive persistence
+    volumes:
+      - ./backend_data:/app/data
+    environment:
+      - PYTHONPATH=/app

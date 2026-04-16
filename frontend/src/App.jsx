@@ -1,248 +1,366 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Activity, 
-  BookOpen, 
-  Layers, 
-  Code2, 
   Search, 
-  ChevronRight, 
-  Database, 
-  ExternalLink,
-  ClipboardList,
-  Stethoscope,
-  Sparkles,
-  Zap,
-  Target
+  Clock, 
+  ArrowLeft,
+  ChevronRight,
+  X,
+  RefreshCcw,
+  Activity,
+  Trash2,
+  Edit,
+  Save,
+  AlertTriangle,
+  Globe
 } from 'lucide-react';
-import { mockResults, mockSources } from './mockData';
+import { initialDiagnoses, keywordDictionary } from './mockData';
+
+const ARCHIVE_KEY = 'cddp_demo_archive';
 
 function App() {
-  const [diseaseInput, setDiseaseInput] = useState('');
-  const [perspective, setPerspective] = useState('치료 단계 중심');
-  const [activeTab, setActiveTab] = useState('구조화 결과');
-  const [result, setResult] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [diagnoses, setDiagnoses] = useState([]); 
+  const [inputVal, setInputVal] = useState('');
+  const [isSearchView, setIsSearchView] = useState(true);
+  const [selectedKeywords, setSelectedKeywords] = useState([]); 
+  const [searchQuery, setSearchQuery] = useState(''); 
+  const [selectedDiagnosis, setSelectedDiagnosis] = useState(null); 
+  const [editingDiagnosis, setEditingDiagnosis] = useState(null);
+  const [editText, setEditText] = useState('');
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [error, setError] = useState(null);
 
-  // 시연용 초기값 로드
+  // 1. 데모 모드 감지 및 초기 데이터 동기화
+  const fetchDiagnoses = async () => {
+    setIsLoadingHistory(true);
+    const demoDomain = window.location.hostname !== 'localhost';
+    
+    try {
+      if (demoDomain) throw new Error("Demo Environment"); // 데모 버전은 항상 로컬 스토리지 우선
+
+      const response = await fetch('http://localhost:8000/api/diagnoses');
+      if (response.ok) {
+        const data = await response.json();
+        setDiagnoses(data.length > 0 ? data : initialDiagnoses);
+        setIsDemoMode(false);
+      } else {
+        throw new Error("Backend unreachable");
+      }
+    } catch (err) {
+      console.log("Entering Demo Mode (LocalStorage Sync)");
+      setIsDemoMode(true);
+      const saved = localStorage.getItem(ARCHIVE_KEY);
+      if (saved) {
+        setDiagnoses(JSON.parse(saved));
+      } else {
+        setDiagnoses(initialDiagnoses);
+        localStorage.setItem(ARCHIVE_KEY, JSON.stringify(initialDiagnoses));
+      }
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
   useEffect(() => {
-    handleSearch('만성 콩팥병');
+    fetchDiagnoses();
   }, []);
 
-  const handleSearch = (disease = diseaseInput) => {
-    if (!disease) return;
-    
-    setIsLoading(true);
-    // AI 처리 시뮬레이션
-    setTimeout(() => {
-      const found = mockResults[disease]?.[perspective] || mockResults['만성 콩팥병'][perspective];
-      setResult({
-        disease,
-        perspective,
-        ...found
-      });
-      setIsLoading(false);
-    }, 1200);
+  // 2. LocalStorage 업데이트 (데모 모드용)
+  const updateLocalStore = (newDiagnoses) => {
+    setDiagnoses(newDiagnoses);
+    if (isDemoMode) {
+      localStorage.setItem(ARCHIVE_KEY, JSON.stringify(newDiagnoses));
+    }
   };
 
-  const renderTabContent = () => {
-    if (isLoading) {
-      return (
-        <div className="empty-state fade-in">
-          <div className="logo-icon rotating" style={{ marginBottom: '24px' }}>
-            <Zap size={24} />
-          </div>
-          <h2 style={{ marginBottom: '8px' }}>데이터 구조화 분석 중...</h2>
-          <p style={{ color: 'var(--text-dim)' }}>최신 임상 가이드라인과 학술 소스를 병합하여 맞춤형 구조를 생성하고 있습니다.</p>
-        </div>
+  const handleAddDiagnosis = async () => {
+    if (!inputVal.trim()) return;
+    setIsAnalyzing(true);
+
+    if (isDemoMode) {
+      // 데모 모드 시뮬레이션
+      setTimeout(() => {
+        const mockKeywords = keywordDictionary.filter(kw => inputVal.includes(kw));
+        const newEntry = {
+          id: Date.now(),
+          date: new Date().toLocaleString(),
+          rawContent: inputVal,
+          summary: inputVal.substring(0, 30) + "...",
+          keywords: mockKeywords.length > 0 ? mockKeywords : ["General Case"],
+          perspective: "데모 시뮬레이션",
+          isDemo: true
+        };
+        updateLocalStore([newEntry, ...diagnoses]);
+        setInputVal('');
+        setIsAnalyzing(false);
+        setIsSearchView(false);
+      }, 1500);
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:8000/api/structure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ diagnosis: inputVal, perspective: "치료 단계 중심" })
+      });
+      if (response.ok) {
+        await fetchDiagnoses();
+        setInputVal('');
+        setIsSearchView(false);
+      }
+    } catch (err) {
+      console.error("API Error - Switching to Demo session");
+      setIsDemoMode(true);
+      handleAddDiagnosis(); // 재시도
+    } finally {
+      if (!isDemoMode) setIsAnalyzing(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (isDemoMode) {
+      updateLocalStore(diagnoses.filter(d => d.id !== id));
+      setDeleteConfirmId(null);
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8000/api/diagnoses/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        await fetchDiagnoses();
+        setDeleteConfirmId(null);
+      }
+    } catch (err) {
+      console.error("Delete failed");
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!editingDiagnosis || !editText.trim()) return;
+
+    if (isDemoMode) {
+      const updated = diagnoses.map(d => 
+        d.id === editingDiagnosis.id ? { ...d, rawContent: editText, updated_at: new Date().toISOString() } : d
+      );
+      updateLocalStore(updated);
+      setEditingDiagnosis(null);
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:8000/api/diagnoses/${editingDiagnosis.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rawContent: editText })
+      });
+      if (response.ok) {
+        await fetchDiagnoses();
+        setEditingDiagnosis(null);
+      }
+    } catch (err) {
+      console.error("Update failed");
+    }
+  };
+
+  const toggleKeyword = (kw) => {
+    setSelectedKeywords(prev => 
+      prev.includes(kw) ? prev.filter(k => k !== kw) : [...prev, kw]
+    );
+  };
+
+  const allKeywords = useMemo(() => {
+    const keys = new Set();
+    diagnoses.forEach(d => {
+      (d?.keywords || []).forEach(k => keys.add(k));
+    });
+    return Array.from(keys);
+  }, [diagnoses]);
+
+  const filteredDiagnoses = useMemo(() => {
+    let result = diagnoses;
+    if (selectedKeywords.length > 0) {
+      result = result.filter(d => selectedKeywords.every(sk => (d?.keywords || []).includes(sk)));
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(d => 
+        (d?.rawContent || "").toLowerCase().includes(q) || (d?.keywords || []).some(k => k.toLowerCase().includes(q))
       );
     }
+    return result;
+  }, [diagnoses, selectedKeywords, searchQuery]);
 
-    if (!result) return null;
+  const renderLanding = () => (
+    <div className="landing-content full-screen">
+      <div className="search-container fade-in">
+        <Activity size={48} color="var(--primary)" style={{ marginBottom: '20px' }} />
+        <h1 className="logo-title">Clinical Discovery Ingestion</h1>
+        <p className="hero-subtitle">의료 전문가의 실시간 진단 데이터를 지능형 아카이브로 통합합니다.</p>
+        
+        <div className="search-input-area hero">
+          <textarea 
+            className="main-textarea"
+            placeholder="환자의 진단 내용 또는 임상 소견을 상세히 입력하세요..."
+            value={inputVal}
+            onChange={(e) => setInputVal(e.target.value)}
+          />
+          <button className="btn-submit hero-btn" onClick={handleAddDiagnosis} disabled={isAnalyzing}>
+            {isAnalyzing ? "AI 분석 엔진 구동 중..." : "진단 데이터 수집 및 구조화 시작"}
+          </button>
+        </div>
 
-    switch (activeTab) {
-      case '구조화 결과':
-        return (
-          <div className="grid-2 fade-in">
-            <div className="main-sections">
-              <div className="card">
-                <h3 className="card-title">
-                  <Sparkles size={20} style={{ color: 'var(--primary)' }} /> 
-                  정리 관점: {result.perspective}
-                </h3>
-                <p style={{ color: 'var(--text-dim)', marginBottom: '32px', fontSize: '1rem', lineHeight: '1.6' }}>
-                  {result.preference_desc}
-                </p>
+        <div style={{ marginTop: '40px' }}>
+          <button className="text-link-btn" onClick={() => setIsSearchView(false)}>
+            기존 아카이브 맵 탐색기 <ChevronRight size={18} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
-                {result.sections.map((section, idx) => (
-                  <div key={idx} style={{ marginBottom: '32px' }}>
-                    <h4 style={{ color: 'white', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.1rem' }}>
-                      <Target size={18} style={{ color: 'var(--secondary)' }} /> {section.title}
-                    </h4>
-                    <div style={{ display: 'grid', gap: '12px' }}>
-                      {section.items.map((item, i) => (
-                        <div key={i} className="structuring-item">
-                          {item}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+  const renderDashboard = () => (
+    <div className="dashboard-layout fade-in">
+      <div className="dashboard-content">
+        <header className="dashboard-header">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <button className="icon-btn" onClick={() => setIsSearchView(true)}><ArrowLeft size={18} /></button>
+              <h2 style={{ fontSize: '1.4rem' }}>Clinical Data Discovery</h2>
+            </div>
+            <div className="badge-group">
+              <div className="badge secondary">Total: {diagnoses.length}</div>
+              <div className={`badge ${isDemoMode ? 'accent' : 'primary'}`} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                {isDemoMode ? <Globe size={12} /> : <RefreshCcw size={12} className={isLoadingHistory ? "spin" : ""} />}
+                {isDemoMode ? '데모 시뮬레이션 모드' : '백엔드 동기화 모드'}
               </div>
             </div>
+          </div>
 
-            <div className="side-info">
-              <div className="card" style={{ borderLeft: '4px solid var(--secondary)' }}>
-                <h4 className="card-title" style={{ fontSize: '1rem' }}><Stethoscope size={18} /> 질환 개요</h4>
-                <p style={{ fontSize: '0.95rem', lineHeight: '1.7', color: 'var(--text-dim)' }}>{result.overview}</p>
+          <div className="dashboard-search-area">
+            <div className="search-bar-wrapper">
+              <Search size={20} className="search-icon" />
+              <input 
+                type="text" 
+                className="dashboard-search-input"
+                placeholder="키워드 또는 내용 실시간 검색..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="keyword-bar">
+            {allKeywords.map(kw => (
+              <button key={kw} className={`keyword-btn ${selectedKeywords.includes(kw) ? 'active' : ''}`} onClick={() => toggleKeyword(kw)}>#{kw}</button>
+            ))}
+          </div>
+        </header>
+
+        <main className="results-list">
+          {filteredDiagnoses.map((item, idx) => (
+            <div key={item.id || idx} className="case-card">
+              <div className="card-actions">
+                <button className="action-btn" onClick={() => { setEditingDiagnosis(item); setEditText(item.rawContent); }}>
+                  <Edit size={14} />
+                </button>
+                <button className="action-btn delete" onClick={() => setDeleteConfirmId(item.id)}>
+                  <Trash2 size={14} />
+                </button>
               </div>
-              
-              <div className="card">
-                <h4 className="card-title" style={{ fontSize: '1rem' }}><Layers size={18} /> 핵심 키워드</h4>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                  {result.keywords.map((kw, i) => (
-                    <span key={i} className="badge">{kw}</span>
-                  ))}
+              <div className="case-meta">
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {(item?.keywords || []).map(k => <span key={k} className="case-tag">#{k}</span>)}
                 </div>
+                <span className="case-date">{item?.date || item?.saved_at}</span>
               </div>
+              <div className="case-body">{item?.rawContent}</div>
+              <div className="case-footer">
+                 <button className="text-action-btn" onClick={() => setSelectedDiagnosis(item)}>구조화 JSON 리포트 확인</button>
+              </div>
+            </div>
+          ))}
+        </main>
+      </div>
 
-              <div className="card" style={{ background: 'rgba(99, 102, 241, 0.05)', borderColor: 'rgba(99, 102, 241, 0.2)' }}>
-                <h5 style={{ color: 'var(--secondary)', marginBottom: '12px', fontSize: '0.9rem', fontWeight: '700' }}>Platform Intelligence</h5>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', lineHeight: '1.5' }}>
-                  본 브리핑은 KDIGO 2024 권고안 및 최신 RCT 데이터를 기반으로 실시간 구조화되었습니다.
-                </p>
-              </div>
+      <aside className="timeline-sidebar">
+        <div className="sidebar-header">
+          <Clock size={20} className="text-dim" />
+          <h3 style={{ fontSize: '1.1rem' }}>아카이브 타임라인</h3>
+        </div>
+        <div className="timeline-scroll">
+          {diagnoses.map((d, i) => (
+            <div key={d.id || i} className="timeline-item" onClick={() => { setIsSearchView(false); setSelectedDiagnosis(d); }}>
+              <div className="timeline-title">{d?.summary || d?.rawContent?.substring(0, 30)}</div>
+              <div className="timeline-tags">{(d?.keywords || []).slice(0, 3).map(k => <span key={k}>#{k}</span>)}</div>
             </div>
-          </div>
-        );
-      case '참고 정보':
-        return (
-          <div className="fade-in">
-            <h3 className="card-title"><Database size={20} style={{ color: 'var(--secondary)' }} /> 데이터 소스 및 임상 근거</h3>
-            <p style={{ color: 'var(--text-dim)', marginBottom: '32px' }}>구조화에 활용된 원문 소스 조각들입니다. 각 내역은 벡터 임베딩을 통해 추출되었습니다.</p>
-            <div className="grid-cards">
-              {mockSources.map((source, idx) => (
-                <div key={idx} className="card source-card">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                    <span className="badge" style={{ margin: 0 }}>
-                      {source.topic}
-                    </span>
-                    <ExternalLink size={16} className="text-dim" />
-                  </div>
-                  <h4 style={{ fontSize: '1.1rem', marginBottom: '12px', color: 'white' }}>{source.title}</h4>
-                  <p style={{ fontSize: '0.9rem', color: 'var(--text-dim)', lineHeight: '1.6' }}>{source.snippet}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      case '프롬프트 미리보기':
-        return (
-          <div className="card fade-in">
-            <h3 className="card-title"><Code2 size={20} style={{ color: 'var(--accent)' }} /> RAG Logic & Prompt Engineering</h3>
-            <p style={{ marginBottom: '24px', fontSize: '0.95rem', color: 'var(--text-dim)' }}>
-              선택한 관점에 따른 지식 추출을 위해 LLM(GPT-4o)에 전달되는 시스템 지시어와 컨텍스트 구조입니다.
-            </p>
-            <div className="code-block">
-              {result.prompt}
-            </div>
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
+          ))}
+        </div>
+      </aside>
+    </div>
+  );
 
   return (
     <div className="app-container">
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="logo-area">
-          <div className="logo-icon">
-            <Activity size={24} />
-          </div>
-          <div className="logo-text">
-            CKD AI<br />
-            <span style={{ fontSize: '0.85rem', fontWeight: '500', opacity: 0.7 }}>Platform Workspace</span>
-          </div>
-        </div>
+      {isSearchView ? renderLanding() : renderDashboard()}
 
-        <div className="config-group">
-          <label className="label">대상 질환</label>
-          <div style={{ position: 'relative' }}>
-            <input 
-              type="text" 
-              className="input-field" 
-              placeholder="질환명을 입력하세요..." 
-              value={diseaseInput}
-              onChange={(e) => setDiseaseInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            />
-            <Search 
-              size={18} 
-              style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', cursor: 'pointer' }} 
-              onClick={() => handleSearch()}
-            />
-          </div>
-        </div>
-
-        <div className="config-group">
-          <label className="label">정리 프레임워크</label>
-          <select 
-            className="input-field select-field"
-            value={perspective}
-            onChange={(e) => {
-              setPerspective(e.target.value);
-              if (diseaseInput || result) handleSearch(diseaseInput || result.disease);
-            }}
-          >
-            <option>치료 단계 중심</option>
-            <option>약물 기전 중심</option>
-            <option>부작용 고려 중심</option>
-            <option>복용 편의성 중심</option>
-          </select>
-        </div>
-
-        <div style={{ marginTop: 'auto' }}>
-          <div className="card" style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '20px', border: '1px solid var(--border-glass)' }}>
-            <h5 style={{ fontSize: '0.85rem', fontWeight: '700', marginBottom: '8px', color: 'var(--secondary)' }}>PoC Scope Disclaimer</h5>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', lineHeight: '1.5' }}>
-              본 제품은 정보 탐색 경험의 혁신을 제안하는 PoC 프로젝트입니다. 실제 처방이나 진단에는 활용될 수 없습니다.
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <AlertTriangle size={48} color="var(--danger)" style={{ marginBottom: '16px' }} />
+            <h3>영후 삭제 확인 - CDDP</h3>
+            <p style={{ color: 'var(--text-dim)', margin: '12px 0 24px' }}>
+              {isDemoMode ? '데모 버전에서는 브라우저 저장소에서 제거됩니다.' : '아카이브에서 영구적으로 삭제하시겠습니까?'}
             </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button className="btn-submit" style={{ flex: 1, background: '#334155' }} onClick={() => setDeleteConfirmId(null)}>취소</button>
+              <button className="btn-submit" style={{ flex: 1, background: 'var(--danger)' }} onClick={() => handleDelete(deleteConfirmId)}>영구 삭제</button>
+            </div>
           </div>
-          <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '24px', opacity: 0.5 }}>
-            © 2024 Clinical Structuring Agent
-          </p>
         </div>
-      </aside>
+      )}
 
-      {/* Main Content */}
-      <main className="main-content">
-        <header className="header">
-          <div className="tab-nav">
-            {[
-              { id: '구조화 결과', icon: <ClipboardList size={18} /> },
-              { id: '참고 정보', icon: <BookOpen size={18} /> },
-              { id: '프롬프트 미리보기', icon: <Code2 size={18} /> }
-            ].map(tab => (
-              <div 
-                key={tab.id} 
-                className={`tab-item ${activeTab === tab.id ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.icon}
-                {tab.id}
+      {/* Edit Modal */}
+      {editingDiagnosis && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h3>진단 기록 수정</h3>
+              <button className="icon-btn" onClick={() => setEditingDiagnosis(null)}><X size={20} /></button>
+            </div>
+            <div className="modal-body" style={{ marginTop: '20px' }}>
+              <textarea 
+                className="main-textarea" 
+                style={{ height: '200px', fontSize: '1.1rem', background: '#0a0c10', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-glass)', textAlign: 'left' }}
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+              />
+              <button className="btn-submit" style={{ width: '100%', marginTop: '20px' }} onClick={handleUpdate}>
+                변경 사항 저장
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedDiagnosis && !editingDiagnosis && (
+        <div className="modal-overlay" onClick={() => setSelectedDiagnosis(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Persistent Clinical Report</h3>
+              <button className="icon-btn" onClick={() => setSelectedDiagnosis(null)}><X size={20} /></button>
+            </div>
+            <div className="modal-body">
+              <div className="json-container">
+                <pre>{JSON.stringify(selectedDiagnosis, null, 2)}</pre>
               </div>
-            ))}
+            </div>
           </div>
-          <button className="btn-primary" onClick={() => handleSearch()}>
-            브리핑 생성하기
-          </button>
-        </header>
-
-        <div className="content-viewport">
-          {renderTabContent()}
         </div>
-      </main>
+      )}
     </div>
   );
 }
