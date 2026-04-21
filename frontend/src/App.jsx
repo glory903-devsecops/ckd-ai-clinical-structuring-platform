@@ -207,6 +207,19 @@ function App() {
     reader.readAsText(file);
   };
 
+  const handleDownloadTemplate = () => {
+    const csvContent = "diagnosis,perspective\n\"환자의 상태를 입력하세요\",\"치료 단계 중심\"\n\"복용 중인 약물을 입력하세요\",\"신장 보호 중심\"";
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", "standard_diagnosis_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const [showCsvHelp, setShowCsvHelp] = useState(false);
+
   const toggleKeyword = (kw) => {
     setSelectedKeywords(prev => 
       prev.includes(kw) ? prev.filter(k => k !== kw) : [...prev, kw]
@@ -258,10 +271,15 @@ function App() {
         </div>
         <div style={{ marginTop: '40px', display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
           <button className="text-link-btn" onClick={() => setIsSearchView(false)}>아카이브 맵 탐색기 열기</button>
-          <label className="text-link-btn" style={{ cursor: 'pointer', border: '1px solid var(--border-glass)', padding: '8px 20px', borderRadius: '12px' }}>
-            {isUploading ? "업로드 중..." : "CSV 데이터 일괄 업로드"}
-            <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvUpload} disabled={isUploading} />
-          </label>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <label className="text-link-btn" style={{ cursor: 'pointer', border: '1px solid var(--border-glass)', padding: '8px 20px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)' }}>
+              {isUploading ? "업로드 중..." : "CSV 일괄 업로드"}
+              <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvUpload} disabled={isUploading} />
+            </label>
+            <button className="icon-btn" style={{ padding: '8px', color: 'var(--secondary)', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '10px' }} onClick={() => setShowCsvHelp(true)}>
+              <AlertTriangle size={20} />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -392,6 +410,23 @@ function App() {
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header"><h3>Clinical Report</h3><button className="icon-btn" onClick={() => setSelectedDiagnosis(null)}><X size={20} /></button></div>
             <div className="modal-body"><div className="json-container"><pre>{JSON.stringify(selectedDiagnosis, null, 2)}</pre></div></div>
+          </div>
+        </div>
+      )}
+
+      {showCsvHelp && (
+        <div className="modal-overlay" onClick={() => setShowCsvHelp(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className="modal-header"><h3>CSV 업로드 가이드</h3><button className="icon-btn" onClick={() => setShowCsvHelp(false)}><X size={20} /></button></div>
+            <div className="modal-body">
+              <p style={{ color: 'var(--text-dim)', marginBottom: '20px' }}>복잡한 데이터도 텍스트 중심으로 간단히 정리하여 업로드할 수 있습니다.</p>
+              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '15px', borderRadius: '8px', fontSize: '0.9rem', marginBottom: '20px' }}>
+                <code style={{ color: 'var(--primary)' }}>diagnosis, perspective</code><br/>
+                <code>"환자 소견 1", "치료 단계 중심"</code><br/>
+                <code>"환자 소견 2", "신장 보호 중심"</code>
+              </div>
+              <button className="btn-submit" style={{ width: '100%', background: 'var(--secondary)' }} onClick={handleDownloadTemplate}>표준 양식(.CSV) 다운로드</button>
+            </div>
           </div>
         </div>
       )}
