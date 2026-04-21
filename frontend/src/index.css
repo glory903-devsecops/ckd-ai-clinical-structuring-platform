@@ -337,6 +337,18 @@ body {
   color: white;
 }
 
+.keyword-btn.active-logic {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.keyword-btn.inactive-logic {
+  background: rgba(148, 163, 184, 0.05);
+  color: var(--text-dim);
+  border-color: var(--border-glass);
+}
+
 .spin { animation: spin 2s linear infinite; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 

@@ -34,6 +34,7 @@ function App() {
   const [isUploading, setIsUploading] = useState(false);
   const [viewMode, setViewMode] = useState('archive'); // 'archive' or 'trash'
   const [trashDiagnoses, setTrashDiagnoses] = useState([]);
+  const [isIntersection, setIsIntersection] = useState(false); // New: Filter logic toggle
 
   const fetchDiagnoses = async () => {
     setIsLoadingHistory(true);
@@ -295,10 +296,16 @@ function App() {
   const filteredDiagnoses = useMemo(() => {
     let result = diagnoses;
     if (selectedKeywords.length > 0) {
-      // AND 필터링: 선택된 모든 키워드를 포함하는 항목만 표시
+      // 키워드 필터링: 합집합(OR) 또는 교집합(AND) 선택 적용
       result = result.filter(d => {
-        const itemKeys = d?.keywords || [];
-        return selectedKeywords.every(sk => itemKeys.includes(sk));
+        const itemKeys = (d?.keywords || []).map(k => k.trim());
+        const selectedTrimmed = selectedKeywords.map(sk => sk.trim());
+        
+        if (isIntersection) {
+          return selectedTrimmed.every(sk => itemKeys.includes(sk));
+        } else {
+          return selectedTrimmed.some(sk => itemKeys.includes(sk));
+        }
       });
     }
     if (searchQuery.trim()) {
@@ -308,7 +315,7 @@ function App() {
       );
     }
     return result;
-  }, [diagnoses, selectedKeywords, searchQuery]);
+  }, [diagnoses, selectedKeywords, searchQuery, isIntersection]);
 
   const renderLanding = () => (
     <div className="landing-content full-screen">
@@ -402,7 +409,20 @@ function App() {
                 #{kw}
               </button>
             ))}
-            {selectedKeywords.length > 0 && <button className="keyword-btn reset" onClick={() => setSelectedKeywords([])}>필터 초기화</button>}
+            {selectedKeywords.length > 0 && (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="keyword-btn reset" onClick={() => { setSelectedKeywords([]); setIsIntersection(false); }}>필터 초기화</button>
+                {selectedKeywords.length > 1 && (
+                  <button 
+                    className={`keyword-btn ${isIntersection ? 'active-logic' : 'inactive-logic'}`} 
+                    onClick={() => setIsIntersection(!isIntersection)}
+                    style={{ borderStyle: 'dashed' }}
+                  >
+                    {isIntersection ? "교집합(AND) 모드" : "합집합(OR) 모드"}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </header>
 
@@ -455,7 +475,7 @@ function App() {
           <h3 style={{ fontSize: '1.1rem' }}>아카이브 타임라인</h3>
         </div>
         <div className="timeline-scroll">
-          {diagnoses.map((d, i) => (
+          {(viewMode === 'archive' ? filteredDiagnoses : trashDiagnoses).map((d, i) => (
             <div key={d.id || i} className="timeline-item" onClick={() => { setIsSearchView(false); setSelectedDiagnosis(d); }}>
               <div className="timeline-title">{d?.summary || d?.rawContent?.substring(0, 30)}</div>
               <div className="timeline-tags">{(d?.keywords || []).slice(0, 3).map(k => <span key={k}>#{k}</span>)}</div>
