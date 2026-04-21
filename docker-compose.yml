@@ -1,20 +1,23 @@
 services:
   frontend:
+    container_name: cddp-frontend
     build:
       context: ./frontend
     ports:
       - "80:80"
     depends_on:
       - backend
+    restart: always
 
   backend:
+    container_name: cddp-backend
     build:
       context: .
     ports:
       - "8501:8501"
       - "8000:8000"
-    # Added volume mapping for the data directory to ensure clinical archive persistence
     volumes:
       - ./backend_data:/app/data
     environment:
       - PYTHONPATH=/app
+    restart: always
