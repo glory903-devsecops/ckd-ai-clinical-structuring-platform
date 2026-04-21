@@ -31,7 +31,31 @@ def health_check():
 
 @app.get("/api/diagnoses")
 def get_all_diagnoses():
-    return storage_service.load_all()
+    """상태가 활성인(is_deleted=False) 진단 내역만 반환합니다."""
+    all_data = storage_service.load_all()
+    active_data = [d for d in all_data if not d.get("is_deleted", False)]
+    return active_data
+
+@app.get("/api/diagnoses/trash")
+def get_trash_diagnoses():
+    """휴지통에 있는(is_deleted=True) 진단 내역만 반환합니다."""
+    all_data = storage_service.load_all()
+    deleted_data = [d for d in all_data if d.get("is_deleted", False)]
+    return deleted_data
+
+@app.post("/api/diagnoses/{diagnosis_id}/restore")
+def restore_diagnosis(diagnosis_id: str):
+    """휴지통의 진단 내역을 복구합니다."""
+    success = storage_service.restore_one(diagnosis_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Diagnosis not found in trash")
+    return {"status": "success", "message": f"Diagnosis {diagnosis_id} restored"}
+
+@app.post("/api/diagnoses/purge")
+def purge_trash():
+    """휴지통을 비웁니다. 백엔드에서는 별도 파일에 보관됩니다."""
+    count = storage_service.purge_trash()
+    return {"status": "success", "message": f"{count} items purged and archived"}
 
 @app.post("/api/structure")
 def structure_diagnosis(request: StructuringRequest):

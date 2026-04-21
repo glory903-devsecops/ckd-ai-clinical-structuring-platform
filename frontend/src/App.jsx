@@ -32,6 +32,8 @@ function App() {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [viewMode, setViewMode] = useState('archive'); // 'archive' or 'trash'
+  const [trashDiagnoses, setTrashDiagnoses] = useState([]);
 
   const fetchDiagnoses = async () => {
     setIsLoadingHistory(true);
@@ -39,10 +41,17 @@ function App() {
     
     try {
       if (demoDomain) throw new Error("Demo Environment");
-      const response = await fetch('http://localhost:8000/api/diagnoses');
-      if (response.ok) {
-        const data = await response.json();
-        setDiagnoses(data.length > 0 ? data : initialDiagnoses);
+      
+      const [activeRes, trashRes] = await Promise.all([
+        fetch('http://localhost:8000/api/diagnoses'),
+        fetch('http://localhost:8000/api/diagnoses/trash')
+      ]);
+
+      if (activeRes.ok && trashRes.ok) {
+        const activeData = await activeRes.json();
+        const trashData = await trashRes.json();
+        setDiagnoses(activeData.length > 0 ? activeData : initialDiagnoses);
+        setTrashDiagnoses(trashData);
         setIsDemoMode(false);
       } else {
         throw new Error("Backend unreachable");
@@ -50,8 +59,12 @@ function App() {
     } catch (err) {
       setIsDemoMode(true);
       const saved = localStorage.getItem(ARCHIVE_KEY);
+      const savedTrash = localStorage.getItem(ARCHIVE_KEY + "_trash");
+      
       if (saved) {
-        setDiagnoses(JSON.parse(saved));
+        const all = JSON.parse(saved);
+        setDiagnoses(all.filter(d => !d.is_deleted));
+        setTrashDiagnoses(all.filter(d => d.is_deleted));
       } else {
         setDiagnoses(initialDiagnoses);
         localStorage.setItem(ARCHIVE_KEY, JSON.stringify(initialDiagnoses));
@@ -117,7 +130,14 @@ function App() {
 
   const handleDelete = async (id) => {
     if (isDemoMode) {
-      updateLocalStore(diagnoses.filter(d => d.id !== id));
+      const target = diagnoses.find(d => d.id === id);
+      if (target) {
+        const newActive = diagnoses.filter(d => d.id !== id);
+        const newTrash = [{ ...target, is_deleted: true, deleted_at: new Date().toISOString() }, ...trashDiagnoses];
+        setDiagnoses(newActive);
+        setTrashDiagnoses(newTrash);
+        localStorage.setItem(ARCHIVE_KEY, JSON.stringify([...newActive, ...newTrash]));
+      }
       setDeleteConfirmId(null);
       return;
     }
@@ -126,6 +146,41 @@ function App() {
       if (response.ok) {
         await fetchDiagnoses();
         setDeleteConfirmId(null);
+      }
+    } catch (err) {}
+  };
+
+  const handleRestore = async (id) => {
+    if (isDemoMode) {
+      const target = trashDiagnoses.find(d => d.id === id);
+      if (target) {
+        const newTrash = trashDiagnoses.filter(d => d.id !== id);
+        const newActive = [{ ...target, is_deleted: false }, ...diagnoses];
+        setDiagnoses(newActive);
+        setTrashDiagnoses(newTrash);
+        localStorage.setItem(ARCHIVE_KEY, JSON.stringify([...newActive, ...newTrash]));
+      }
+      return;
+    }
+    try {
+      const response = await fetch(`http://localhost:8000/api/diagnoses/${id}/restore`, { method: 'POST' });
+      if (response.ok) {
+        await fetchDiagnoses();
+      }
+    } catch (err) {}
+  };
+
+  const handlePurge = async () => {
+    if (isDemoMode) {
+      setTrashDiagnoses([]);
+      const active = diagnoses.filter(d => !d.is_deleted);
+      localStorage.setItem(ARCHIVE_KEY, JSON.stringify(active));
+      return;
+    }
+    try {
+      const response = await fetch(`http://localhost:8000/api/diagnoses/purge`, { method: 'POST' });
+      if (response.ok) {
+        await fetchDiagnoses();
       }
     } catch (err) {}
   };
@@ -169,9 +224,12 @@ function App() {
         const cols = row.split(',');
         return {
           diagnosis: cols[0]?.trim() || "내용 없음",
-          perspective: "치료 단계 중심"
+          perspective: cols[1]?.trim() || "치료 단계 중심"
         };
-      }).filter(item => item.diagnosis !== "내용 없음").slice(0, 50);
+      }).filter(item => item.diagnosis !== "내용 없음");
+
+      // 자산 보호 정책: 완전히 동일한 내용+시간이 아닌 한 모두 인입
+      const existingContents = diagnoses.map(d => d.rawContent);
 
       if (isDemoMode) {
         const newEntries = bulkData.map((item, i) => ({
@@ -295,12 +353,32 @@ function App() {
               <h2 style={{ fontSize: '1.4rem' }} className="responsive-title">Clinical Data Discovery</h2>
             </div>
             <div className="badge-group">
-              <div className="badge secondary">Total: {diagnoses.length}</div>
+              <div className="badge secondary" onClick={() => setViewMode('archive')} style={{ cursor: 'pointer', opacity: viewMode === 'archive' ? 1 : 0.6 }}>
+                기록: {diagnoses.length}
+              </div>
+              <div className="badge secondary" onClick={() => setViewMode('trash')} style={{ cursor: 'pointer', opacity: viewMode === 'trash' ? 1 : 0.6, background: 'rgba(239, 68, 68, 0.1)' }}>
+                휴지통: {trashDiagnoses.length}
+              </div>
               <div className={`badge ${isDemoMode ? 'accent' : 'primary'}`} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 {isDemoMode ? <Globe size={12} /> : <RefreshCcw size={12} className={isLoadingHistory ? "spin" : ""} />}
                 {isDemoMode ? '지능형 데모 모드' : '백엔드 동기화 모드'}
               </div>
             </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+            <button 
+              className={`nav-tab ${viewMode === 'archive' ? 'active' : ''}`} 
+              onClick={() => setViewMode('archive')}
+            >
+              <Activity size={16} /> 활성 아카이브
+            </button>
+            <button 
+              className={`nav-tab ${viewMode === 'trash' ? 'active' : ''}`} 
+              onClick={() => setViewMode('trash')}
+            >
+              <Trash2 size={16} /> 휴지통
+            </button>
           </div>
 
           <div className="dashboard-search-area">
@@ -329,11 +407,24 @@ function App() {
         </header>
 
         <main className="results-list">
-          {filteredDiagnoses.length > 0 ? filteredDiagnoses.map((item, idx) => (
-            <div key={item.id || idx} className="case-card">
+          {viewMode === 'trash' && trashDiagnoses.length > 0 && (
+            <div style={{ padding: '0 20px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.9rem', color: 'var(--text-dim)' }}>* 휴지통을 비워도 백엔드 시스템에는 영구 보관됩니다.</span>
+              <button className="reset-btn" style={{ color: 'var(--danger)' }} onClick={handlePurge}>휴지통 전체 비우기</button>
+            </div>
+          )}
+
+          {(viewMode === 'archive' ? filteredDiagnoses : trashDiagnoses).length > 0 ? (viewMode === 'archive' ? filteredDiagnoses : trashDiagnoses).map((item, idx) => (
+            <div key={item.id || idx} className="case-card" style={{ opacity: viewMode === 'trash' ? 0.7 : 1 }}>
               <div className="card-actions">
-                <button className="action-btn" onClick={() => { setEditingDiagnosis(item); setEditText(item.rawContent); }}><Edit size={14} /></button>
-                <button className="action-btn delete" onClick={() => setDeleteConfirmId(item.id)}><Trash2 size={14} /></button>
+                {viewMode === 'archive' ? (
+                  <>
+                    <button className="action-btn" onClick={() => { setEditingDiagnosis(item); setEditText(item.rawContent); }}><Edit size={14} /></button>
+                    <button className="action-btn delete" onClick={() => setDeleteConfirmId(item.id)}><Trash2 size={14} /></button>
+                  </>
+                ) : (
+                  <button className="action-btn" onClick={() => handleRestore(item.id)} style={{ color: 'var(--primary)' }} title="복구"><RefreshCcw size={14} /></button>
+                )}
               </div>
               <div className="case-meta">
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -342,15 +433,17 @@ function App() {
                 <span className="case-date">{item?.date || item?.saved_at}</span>
               </div>
               <div className="case-body">{item?.rawContent}</div>
-              <div className="case-footer">
-                 <button className="text-action-btn" onClick={() => setSelectedDiagnosis(item)}>구조화 JSON 리포트 확인</button>
-              </div>
+              {viewMode === 'archive' && (
+                <div className="case-footer">
+                  <button className="text-action-btn" onClick={() => setSelectedDiagnosis(item)}>구조화 JSON 리포트 확인</button>
+                </div>
+              )}
             </div>
           )) : (
             <div style={{ textAlign: 'center', padding: '100px', color: 'var(--text-dim)' }}>
               <Search size={48} style={{ opacity: 0.2, marginBottom: '20px' }} />
-              <p>선택하신 키워드 조합에 대항하는 기록이 없습니다.</p>
-              <button className="text-link-btn" style={{ marginTop: '12px' }} onClick={() => setSelectedKeywords([])}>모든 기록 보기</button>
+              <p>{viewMode === 'archive' ? '기록이 없습니다.' : '휴지통이 비어있습니다.'}</p>
+              {viewMode === 'archive' && <button className="text-link-btn" style={{ marginTop: '12px' }} onClick={() => setSelectedKeywords([])}>모든 기록 보기</button>}
             </div>
           )}
         </main>
@@ -386,10 +479,11 @@ function App() {
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'center' }}>
             <AlertTriangle size={48} color="var(--danger)" style={{ marginBottom: '16px' }} />
-            <h3>영후 삭제 확인</h3>
+            <h3>휴지통으로 이동하시겠습니까?</h3>
+            <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem', marginTop: '10px' }}>삭제된 데이터는 휴지통에서 언제든 복구할 수 있습니다.</p>
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
               <button className="btn-submit" style={{ flex: 1, background: '#334155' }} onClick={() => setDeleteConfirmId(null)}>취소</button>
-              <button className="btn-submit" style={{ flex: 1, background: 'var(--danger)' }} onClick={() => handleDelete(deleteConfirmId)}>삭제</button>
+              <button className="btn-submit" style={{ flex: 1, background: 'var(--danger)' }} onClick={() => handleDelete(deleteConfirmId)}>이동</button>
             </div>
           </div>
         </div>
