@@ -30,6 +30,8 @@ function App() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const fetchDiagnoses = async () => {
     setIsLoadingHistory(true);
@@ -151,6 +153,60 @@ function App() {
     } catch (err) {}
   };
 
+  const handleCsvUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setIsUploading(true);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target.result;
+      const lines = text.split('\n').filter(line => line.trim());
+      // 첫 번째 줄은 헤더로 가정하고 나머지 데이터 파싱
+      const rows = lines.slice(1);
+      
+      const bulkData = rows.map(row => {
+        const cols = row.split(',');
+        return {
+          diagnosis: cols[0]?.trim() || "내용 없음",
+          perspective: "치료 단계 중심"
+        };
+      }).filter(item => item.diagnosis !== "내용 없음").slice(0, 50);
+
+      if (isDemoMode) {
+        const newEntries = bulkData.map((item, i) => ({
+          id: Date.now() + i,
+          date: new Date().toLocaleString(),
+          rawContent: item.diagnosis,
+          summary: item.diagnosis.substring(0, 30) + "...",
+          keywords: ["일괄 인입"],
+          isDemo: true
+        }));
+        updateLocalStore([...newEntries, ...diagnoses]);
+        setIsUploading(false);
+        setIsSearchView(false);
+        return;
+      }
+
+      try {
+        const response = await fetch('http://localhost:8000/api/diagnoses/bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(bulkData)
+        });
+        if (response.ok) {
+          await fetchDiagnoses();
+          setIsSearchView(false);
+        }
+      } catch (err) {
+        console.error("Bulk upload failed", err);
+      } finally {
+        setIsUploading(false);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const toggleKeyword = (kw) => {
     setSelectedKeywords(prev => 
       prev.includes(kw) ? prev.filter(k => k !== kw) : [...prev, kw]
@@ -200,8 +256,12 @@ function App() {
             {isAnalyzing ? "지능형 키워드 추출 중..." : "진단 데이터 수집 및 구조화 시작"}
           </button>
         </div>
-        <div style={{ marginTop: '40px' }}>
+        <div style={{ marginTop: '40px', display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
           <button className="text-link-btn" onClick={() => setIsSearchView(false)}>아카이브 맵 탐색기 열기</button>
+          <label className="text-link-btn" style={{ cursor: 'pointer', border: '1px solid var(--border-glass)', padding: '8px 20px', borderRadius: '12px' }}>
+            {isUploading ? "업로드 중..." : "CSV 데이터 일괄 업로드"}
+            <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvUpload} disabled={isUploading} />
+          </label>
         </div>
       </div>
     </div>
@@ -214,7 +274,7 @@ function App() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <button className="icon-btn" onClick={() => setIsSearchView(true)}><ArrowLeft size={18} /></button>
-              <h2 style={{ fontSize: '1.4rem' }}>Clinical Data Discovery</h2>
+              <h2 style={{ fontSize: '1.4rem' }} className="responsive-title">Clinical Data Discovery</h2>
             </div>
             <div className="badge-group">
               <div className="badge secondary">Total: {diagnoses.length}</div>
@@ -278,7 +338,7 @@ function App() {
         </main>
       </div>
 
-      <aside className="timeline-sidebar">
+      <aside className={`timeline-sidebar ${showSidebar ? 'active' : ''}`}>
         <div className="sidebar-header">
           <Clock size={20} className="text-dim" />
           <h3 style={{ fontSize: '1.1rem' }}>아카이브 타임라인</h3>
@@ -292,6 +352,12 @@ function App() {
           ))}
         </div>
       </aside>
+      
+      {!isSearchView && (
+        <button className="sidebar-toggle-btn" onClick={() => setShowSidebar(!showSidebar)}>
+          {showSidebar ? <X size={24} /> : <Clock size={24} />}
+        </button>
+      )}
     </div>
   );
 

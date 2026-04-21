@@ -19,10 +19,10 @@ jobs:
         working-directory: frontend
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@eef3234d7d363595f92275468d601b384210344d
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@1d0ff469b7ec7b389d8717904098495096a60395
         with:
           node-version: '22'
 
@@ -33,13 +33,13 @@ jobs:
         run: npm run build
 
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@983d2936d93466103328e3b0901e1d3e164478ec
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@56afc609e735492d6e3c04221199a0ed4052309f
         with:
           path: './frontend/dist'
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db900620474186989d84e36506d8a64f69165b

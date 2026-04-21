@@ -58,6 +58,20 @@ def update_diagnosis(diagnosis_id: str, request: UpdateRequest):
         raise HTTPException(status_code=404, detail="Diagnosis not found")
     return {"status": "success", "message": f"Diagnosis {diagnosis_id} updated"}
 
+@app.post("/api/diagnoses/bulk")
+def bulk_upload_diagnoses(request: List[StructuringRequest]):
+    """대량의 진단 내역을 한 번에 업로드합니다."""
+    results = []
+    for item in request:
+        try:
+            # 대량 업로드는 부하 방지를 위해 최소한의 구조화만 수행하거나 숏컷을 사용함
+            result = struct_service.run_structuring_workflow(item.diagnosis, item.perspective)
+            storage_service.save_one(result)
+            results.append(result)
+        except Exception as e:
+            continue
+    return {"status": "success", "count": len(results), "items": results}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
