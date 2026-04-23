@@ -334,8 +334,10 @@ function App() {
             {isAnalyzing ? "지능형 키워드 추출 중..." : "진단 데이터 수집 및 구조화 시작"}
           </button>
         </div>
-        <div style={{ marginTop: '40px', display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button className="text-link-btn" onClick={() => setIsSearchView(false)}>아카이브 맵 탐색기 열기</button>
+        <div style={{ marginTop: '40px', display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button className="secondary-hero-btn" onClick={() => setIsSearchView(false)}>
+            아카이브 맵 탐색기 탐색 <ChevronRight size={20} />
+          </button>
           <div style={{ display: 'flex', gap: '8px' }}>
             <label className="text-link-btn" style={{ cursor: 'pointer', border: '1px solid var(--border-glass)', padding: '8px 20px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)' }}>
               {isUploading ? "업로드 중..." : "CSV 일괄 업로드"}
