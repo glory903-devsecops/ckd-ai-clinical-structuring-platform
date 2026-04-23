@@ -11,7 +11,8 @@ import {
   Edit,
   Save,
   AlertTriangle,
-  Globe
+  Globe,
+  HelpCircle
 } from 'lucide-react';
 import { initialDiagnoses, keywordDictionary } from './mockData';
 
@@ -35,6 +36,7 @@ function App() {
   const [viewMode, setViewMode] = useState('archive'); // 'archive' or 'trash'
   const [trashDiagnoses, setTrashDiagnoses] = useState([]);
   const [isIntersection, setIsIntersection] = useState(false); // New: Filter logic toggle
+  const [showCsvHelp, setShowCsvHelp] = useState(false); // New: CSV Help Modal toggle
 
   const fetchDiagnoses = async () => {
     setIsLoadingHistory(true);
@@ -277,7 +279,19 @@ function App() {
     document.body.removeChild(link);
   };
 
-  const [showCsvHelp, setShowCsvHelp] = useState(false);
+  const handleDownloadTemplate = () => {
+    const headers = "diagnosis,perspective\n";
+    const sampleBody = "\"72세 여성, 사구체신염 기왕력이 있으며 최근 부종 관찰됨.\",\"치료 단계 중심\"\n";
+    const blob = new Blob([headers + sampleBody], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "clinical_upload_template.csv");
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const toggleKeyword = (kw) => {
     setSelectedKeywords(prev => 
@@ -338,13 +352,13 @@ function App() {
           <button className="secondary-hero-btn" onClick={() => setIsSearchView(false)}>
             아카이브 맵 탐색기 탐색 <ChevronRight size={20} />
           </button>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <label className="text-link-btn" style={{ cursor: 'pointer', border: '1px solid var(--border-glass)', padding: '8px 20px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)' }}>
               {isUploading ? "업로드 중..." : "CSV 일괄 업로드"}
               <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCsvUpload} disabled={isUploading} />
             </label>
-            <button className="icon-btn" style={{ padding: '8px', color: 'var(--secondary)', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '10px' }} onClick={() => setShowCsvHelp(true)}>
-              <AlertTriangle size={20} />
+            <button className="icon-btn" onClick={() => setShowCsvHelp(true)} title="업로드 양식 안내">
+              <HelpCircle size={20} color="var(--text-dim)" />
             </button>
           </div>
         </div>
@@ -532,16 +546,42 @@ function App() {
 
       {showCsvHelp && (
         <div className="modal-overlay" onClick={() => setShowCsvHelp(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-            <div className="modal-header"><h3>CSV 업로드 가이드</h3><button className="icon-btn" onClick={() => setShowCsvHelp(false)}><X size={20} /></button></div>
-            <div className="modal-body">
-              <p style={{ color: 'var(--text-dim)', marginBottom: '20px' }}>복잡한 데이터도 텍스트 중심으로 간단히 정리하여 업로드할 수 있습니다.</p>
-              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '15px', borderRadius: '8px', fontSize: '0.9rem', marginBottom: '20px' }}>
-                <code style={{ color: 'var(--primary)' }}>diagnosis, perspective</code><br/>
-                <code>"환자 소견 1", "치료 단계 중심"</code><br/>
-                <code>"환자 소견 2", "신장 보호 중심"</code>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h3>CSV 업로드 표준 양식 가이드</h3>
+              <button className="icon-btn" onClick={() => setShowCsvHelp(false)}><X size={20} /></button>
+            </div>
+            <div className="modal-body" style={{ marginTop: '20px' }}>
+              <p style={{ color: 'var(--text-dim)', marginBottom: '15px' }}>아카이브에 데이터를 한 번에 업로드하려면 아래 양식(Header)을 반드시 지켜주세요.</p>
+              <div className="json-container" style={{ padding: '15px', background: 'rgba(0,0,0,0.4)', borderRadius: '8px', fontSize: '0.9rem', marginBottom: '20px' }}>
+                <code style={{ color: 'var(--primary)' }}>diagnosis,perspective</code><br/>
+                <code>"진료 소견 혹은 진단 내용 입력","원하는 분석 관점 입력"</code>
               </div>
-              <button className="btn-submit" style={{ width: '100%', background: 'var(--secondary)' }} onClick={handleDownloadTemplate}>표준 양식(.CSV) 다운로드</button>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem', marginBottom: '25px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border-glass)', textAlign: 'left' }}>
+                    <th style={{ padding: '10px' }}>컬럼명</th>
+                    <th style={{ padding: '10px' }}>설명</th>
+                    <th style={{ padding: '10px' }}>필수 여부</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <td style={{ padding: '10px', color: 'var(--primary)' }}>diagnosis</td>
+                    <td style={{ padding: '10px' }}>AI가 분석할 전체 진단 텍스트</td>
+                    <td style={{ padding: '10px' }}>필수</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '10px', color: 'var(--primary)' }}>perspective</td>
+                    <td style={{ padding: '10px' }}>결과 요약 시의 분석 주안점</td>
+                    <td style={{ padding: '10px' }}>선택</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button className="btn-submit" style={{ flex: 1, background: '#334155' }} onClick={() => setShowCsvHelp(false)}>닫기</button>
+                <button className="btn-submit" style={{ flex: 1 }} onClick={handleDownloadTemplate}>양식 다운로드</button>
+              </div>
             </div>
           </div>
         </div>
