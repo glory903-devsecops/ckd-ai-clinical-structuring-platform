@@ -12,7 +12,8 @@ import {
   Save,
   AlertTriangle,
   Globe,
-  HelpCircle
+  HelpCircle,
+  Download
 } from 'lucide-react';
 import { initialDiagnoses, keywordDictionary } from './mockData';
 
@@ -37,6 +38,7 @@ function App() {
   const [trashDiagnoses, setTrashDiagnoses] = useState([]);
   const [isIntersection, setIsIntersection] = useState(false); // New: Filter logic toggle
   const [showCsvHelp, setShowCsvHelp] = useState(false); // New: CSV Help Modal toggle
+  const [selectedIds, setSelectedIds] = useState([]); // New: Track selected records for export
 
   const fetchDiagnoses = async () => {
     setIsLoadingHistory(true);
@@ -59,18 +61,23 @@ function App() {
       } else {
         throw new Error("Backend unreachable");
       }
-    } catch (err) {
+    } catch (error) {
       setIsDemoMode(true);
-      const saved = localStorage.getItem(ARCHIVE_KEY);
-      const savedTrash = localStorage.getItem(ARCHIVE_KEY + "_trash");
-      
-      if (saved) {
-        const all = JSON.parse(saved);
-        setDiagnoses(all.filter(d => !d.is_deleted));
-        setTrashDiagnoses(all.filter(d => d.is_deleted));
+      const cached = localStorage.getItem(ARCHIVE_KEY);
+      if (cached) {
+        setDiagnoses(JSON.parse(cached));
       } else {
-        setDiagnoses(initialDiagnoses);
-        localStorage.setItem(ARCHIVE_KEY, JSON.stringify(initialDiagnoses));
+        try {
+          const mockRes = await fetch('/mock1000.json');
+          if (mockRes.ok) {
+            const massiveMockData = await mockRes.json();
+            setDiagnoses(massiveMockData);
+          } else {
+            setDiagnoses(initialDiagnoses);
+          }
+        } catch (err) {
+          setDiagnoses(initialDiagnoses);
+        }
       }
     } finally {
       setIsLoadingHistory(false);
@@ -99,7 +106,7 @@ function App() {
           id: Date.now(),
           date: new Date().toLocaleString(),
           rawContent: inputVal,
-          summary: inputVal.substring(0, 30) + "...",
+          summary: inputVal.substring(0, 30) + (inputVal.length > 30 ? "..." : ""),
           keywords: mockKeywords.length > 0 ? mockKeywords : ["일반 소견"],
           perspective: "데모 지능형 추출",
           isDemo: true
@@ -108,7 +115,7 @@ function App() {
         setInputVal('');
         setIsAnalyzing(false);
         setIsSearchView(false);
-      }, 1200);
+      }, 800);
       return;
     }
 
@@ -122,12 +129,16 @@ function App() {
         await fetchDiagnoses();
         setInputVal('');
         setIsSearchView(false);
+      } else {
+        throw new Error("Structuring failed");
       }
     } catch (err) {
+      console.warn("Backend unavailable, falling back to demo mode", err);
       setIsDemoMode(true);
-      handleAddDiagnosis();
+      // Wait a moment before retrying in demo mode to avoid recursive loop issues
+      setTimeout(() => handleAddDiagnosis(), 100);
     } finally {
-      if (!isDemoMode) setIsAnalyzing(false);
+      setIsAnalyzing(false);
     }
   };
 
@@ -293,6 +304,43 @@ function App() {
     document.body.removeChild(link);
   };
 
+  const handleToggleSelection = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const handleExportCSV = (type) => {
+    let dataToExport = [];
+    if (type === 'all') {
+      dataToExport = viewMode === 'archive' ? filteredDiagnoses : trashDiagnoses;
+    } else if (type === 'selected') {
+      const source = viewMode === 'archive' ? filteredDiagnoses : trashDiagnoses;
+      dataToExport = source.filter(d => selectedIds.includes(d.id));
+    }
+
+    if (dataToExport.length === 0) {
+      alert("출력할 데이터가 없습니다.");
+      return;
+    }
+
+    const headers = "id,date,rawContent,summary,perspective,keywords\n";
+    const body = dataToExport.map(d => {
+      const escapedContent = (d.rawContent || "").replace(/"/g, '""');
+      const escapedSummary = (d.summary || "").replace(/"/g, '""');
+      const joinedKeywords = (d.keywords || []).join(";");
+      return `"${d.id}","${d.date}","${escapedContent}","${escapedSummary}","${d.perspective || ""}","${joinedKeywords}"`;
+    }).join("\n");
+
+    const blob = new Blob(["\uFEFF" + headers + body], { type: 'text/csv;charset=utf-8;' }); // \uFEFF for Excel UTF-8 BOM
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `clinical_data_export_${type}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const toggleKeyword = (kw) => {
     setSelectedKeywords(prev => 
       prev.includes(kw) ? prev.filter(k => k !== kw) : [...prev, kw]
@@ -405,15 +453,32 @@ function App() {
           </div>
 
           <div className="dashboard-search-area">
-            <div className="search-bar-wrapper">
-              <Search size={20} className="search-icon" />
-              <input 
-                type="text" 
-                className="dashboard-search-input"
-                placeholder="키워드 또는 내용 실시간 검색..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', maxWidth: '900px', margin: '0 auto' }}>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <div className="search-bar-wrapper" style={{ flex: 1 }}>
+                  <Search size={20} className="search-icon" />
+                  <input 
+                    type="text" 
+                    className="dashboard-search-input"
+                    placeholder="키워드 또는 내용 실시간 검색..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: '0.9rem', color: 'var(--text-dim)', paddingLeft: '4px' }}>
+                   선택 항목: {selectedIds.length}개
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button className="text-link-btn" style={{ padding: '6px 12px', fontSize: '0.85rem' }} onClick={() => handleExportCSV('selected')} disabled={selectedIds.length === 0}>
+                    <Download size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} /> 선택 항목 CSV 출력
+                  </button>
+                  <button className="text-link-btn" style={{ padding: '6px 12px', fontSize: '0.85rem' }} onClick={() => handleExportCSV('all')}>
+                    <Download size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} /> 전체 검색결과 CSV 출력
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -452,7 +517,14 @@ function App() {
 
           {(viewMode === 'archive' ? filteredDiagnoses : trashDiagnoses).length > 0 ? (viewMode === 'archive' ? filteredDiagnoses : trashDiagnoses).map((item, idx) => (
             <div key={item.id || idx} className="case-card" style={{ opacity: viewMode === 'trash' ? 0.7 : 1 }}>
-              <div className="card-actions">
+              <div className="card-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <input 
+                  type="checkbox" 
+                  style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+                  checked={selectedIds.includes(item.id)}
+                  onChange={() => handleToggleSelection(item.id)}
+                />
+                <div style={{ height: '16px', width: '1px', background: 'var(--border-glass)' }}></div>
                 {viewMode === 'archive' ? (
                   <>
                     <button className="action-btn" onClick={() => { setEditingDiagnosis(item); setEditText(item.rawContent); }}><Edit size={14} /></button>
@@ -464,7 +536,15 @@ function App() {
               </div>
               <div className="case-meta">
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {(item?.keywords || []).map(k => <span key={k} className="case-tag">#{k}</span>)}
+                  {(item?.keywords || []).map(k => (
+                    <span key={k} className="case-tag wiki-tooltip-trigger">
+                      #{k}
+                      <span className="wiki-tooltip">
+                        <strong>지식 위키 보기</strong><br/>
+                        {k} 관련 최신 임상 가이드 및 케이스 모아보기
+                      </span>
+                    </span>
+                  ))}
                 </div>
                 <span className="case-date">{item?.date || item?.saved_at}</span>
               </div>
